@@ -6,7 +6,9 @@
     <title id="appTitle">Control de Gastos (v2.8)</title>
     
     <meta name="theme-color" content="#007bff">
+    
     <link rel="manifest" href="manifest.json">
+    
     <link rel="apple-touch-icon" href="icon-192.png">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -15,16 +17,356 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     
     <style>
-        /* ... (Tu CSS permanece idéntico) ... */
+        /* ESTILOS CSS - COMPACTACIÓN, TABLAS Y PAGOS */
         :root {
             --primary-color: #007bff; /* Azul primario */
-            /* ... etc ... */
+            --primary-dark: #0056b3; /* Azul oscuro para títulos */
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --bg-light: #f8f9fa;
+            --text-dark: #343a40; 
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            /* Colores para Tablas (Estilo Compacto/Limpio) */
+            --table-header-bg: #e9ecef;
+            --table-total-bg: #d1e7dd; 
+            --table-total-border: #0f5132;
+            --table-zebra-bg: #f8f9fa; 
+            /* Colores para Tipo de Pago */
+            --color-cash: #28a745;
+            --color-card: #007bff;
+            --color-transfer: #fd7e14;
         }
+
         body {
             font-family: Arial, sans-serif;
-            /* ... etc ... */
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            max-width: 450px; 
+            margin: 0 auto;
+            position: relative;
+            min-height: 100vh;
+            padding-bottom: 70px;
         }
-        /* ... (El resto de tus estilos) ... */
+
+        /* --- TÍTULOS EN AZUL OSCURO --- */
+        h2, h3, #titleIngreso {
+            color: var(--primary-dark);
+            text-align: center;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 5px 15px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); 
+        }
+        #appLogo {
+            display: flex;
+            align-items: center;
+            font-size: 1em;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        #appLogo i {
+            font-size: 1.2em;
+            margin-right: 5px;
+        }
+        
+        /* Contenedor de Pantallas */
+        .pantalla {
+            display: none;
+            padding: 20px 20px 100px 20px; 
+        }
+        .pantalla.activa {
+            display: block;
+        }
+
+        /* Formularios y Controles - Compactación en Pantalla 1 */
+        .form-group {
+            margin-bottom: 8px;
+        }
+        label {
+            display: block;
+            margin-bottom: 3px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        input[type="date"], input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 8px; 
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        
+        /* REDUCCIÓN DEL TAMAÑO DE BOTONES */
+        button.btn {
+            display: block;
+            width: 100%;
+            padding: 10px; /* Reducido de 12px */
+            border: none;
+            border-radius: 5px;
+            font-size: 1em; /* Reducido de 1.1em */
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 8px; /* Reducido de 10px */
+        }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-danger { background-color: var(--danger-color); color: white; margin-top: 20px; }
+        .btn-success { background-color: var(--success-color); color: white; margin-top: 8px; }
+        .btn-secondary { background-color: var(--secondary-color); color: white; margin-top: 8px; }
+
+        /* TABLAS - Estilo de filas alternas (Zebra) y color unificado */
+        .tabla-gastos {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px; 
+            background-color: white;
+            box-shadow: var(--shadow-sm);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .tabla-gastos th, .tabla-gastos td {
+            padding: 10px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        .tabla-gastos th {
+            background-color: var(--table-header-bg); 
+            font-weight: 600;
+            border-bottom: 2px solid #ced4da; 
+        }
+        .tabla-gastos td {
+             border-bottom: 1px solid #dee2e6;
+        }
+        /* FILAS ALTERNAS (Zebra) */
+        .tabla-gastos tbody tr:nth-child(even) {
+            background-color: var(--table-zebra-bg);
+        }
+        .tabla-gastos tr:hover:not(tfoot tr) {
+            background-color: #e0f7fa;
+            cursor: pointer;
+        }
+        .tabla-gastos .gasto-valor {
+            font-weight: 600;
+            text-align: right;
+            color: var(--text-dark);
+        }
+        .tabla-gastos .gasto-categoria-abbr {
+            font-weight: 500;
+            color: var(--primary-color);
+            font-size: 0.8em;
+            text-align: center;
+        }
+        .tabla-gastos .gasto-percent {
+            text-align: right;
+        }
+        
+        /* FILA DE TOTAL */
+        .tabla-gastos tfoot tr {
+            font-weight: bold;
+            background-color: var(--table-total-bg);
+            border-top: 2px solid var(--table-total-border);
+        }
+        .tabla-gastos tfoot td {
+            border-bottom: none;
+            color: var(--table-total-border);
+        }
+        .tabla-gastos tfoot .gasto-valor {
+            color: var(--table-total-border);
+        }
+
+        /* TIPO DE PAGO ESTILOS CON COLORES */
+        .payment-type-group {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            gap: 5px;
+        }
+        .payment-type-group input[type="radio"] {
+            display: none;
+        }
+        .payment-type-group label {
+            flex-grow: 1;
+            text-align: center;
+            padding: 10px 5px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: normal;
+            font-size: 0.9em;
+        }
+        .payment-type-group label i {
+            margin-right: 5px;
+            font-size: 1.1em;
+        }
+        #pagoContado + label i { color: var(--color-cash); }
+        #pagoTarjeta + label i { color: var(--color-card); }
+        #pagoTransferencia + label i { color: var(--color-transfer); }
+        
+        .payment-type-group input[type="radio"]:checked + label {
+            background-color: #e9ecef;
+            border-color: var(--primary-color);
+            font-weight: bold;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+        
+        /* NAVEGACIÓN (NAV-TABS) */
+        .nav-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background-color: white;
+            border-top: 1px solid #e0e0e0;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+            max-width: 450px;
+            margin: 0 auto;
+            z-index: 10;
+        }
+        .nav-tabs button {
+            flex-grow: 1;
+            padding: 10px 0; 
+            border: none;
+            background-color: transparent;
+            color: var(--text-dark);
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .nav-tabs button i {
+            display: block;
+            font-size: 1.5em;
+            margin-bottom: 3px;
+            color: var(--text-dark); 
+            transition: color 0.2s;
+        }
+        /* Iconos de color cuando están activos */
+        .nav-tabs button.active i {
+            color: var(--primary-color); 
+        }
+        .nav-tabs button.active {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        /* DETALLE DE TABLA (Pantallas 2 y 3) */
+        #detalleMensual, #detalleHistorico {
+            margin-top: 20px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            display: none;
+        }
+        #detalleMensual h3, #detalleHistorico h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 30px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* Estilos para Mes y Año en una sola línea */
+        .filtro-container-inline {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .filtro-container-inline select {
+            flex-grow: 1;
+        }
+
+        /* AVISO PARA CLIC EN TABLAS */
+        .table-info-alert {
+            background-color: #e9ecef;
+            color: var(--secondary-color);
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            text-align: center;
+            margin-top: 15px;
+            margin-bottom: -10px;
+        }
+
+        /* --- MODAL STYLES --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto; /* 5% desde arriba y centrado */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%; 
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+            animation-name: animatetop;
+            animation-duration: 0.4s
+        }
+
+        /* Animación para el modal */
+        @keyframes animatetop {
+            from {top: -300px; opacity: 0}
+            to {top: 0; opacity: 1}
+        }
+
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        /* Ajuste de botones en el modal */
+        #modal-botones-edicion {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        #modal-botones-edicion button {
+            flex-grow: 1;
+            margin-top: 0; 
+        }
+        #btnModalGuardar { background-color: var(--success-color); }
+        #btnModalEliminar { background-color: var(--danger-color); }
+        #btnModalCancelar { background-color: var(--secondary-color); }
+
     </style>
 </head>
 <body>
@@ -35,10 +377,48 @@
     <div id="ingreso" class="pantalla activa">
         
         <div id="formulario-gasto">
+            <h2 id="titleIngreso" style="text-align: center;">Ingreso de Gasto</h2>
+            <div class="form-group">
+                <label id="labelGastoFecha" for="gastoFecha">Fecha:</label>
+                <input type="date" id="gastoFecha" required>
+            </div>
+            
+            <div class="form-group">
+                <label id="labelGastoCategoria" for="gastoCategoria">Categoría:</label>
+                <select id="gastoCategoria" required>
+                    </select>
+            </div>
+            
+            <div class="form-group">
+                <label id="labelGastoDescripcion" for="gastoDescripcion">Descripción:</label>
+                <input type="text" id="gastoDescripcion" list="sugerenciasDescripciones" placeholder="Ej: Café, Supermercado" required>
+                <datalist id="sugerenciasDescripciones"></datalist>
             </div>
 
+            <div class="form-group">
+                <label id="labelGastoValor" for="gastoValor">Valor:</label>
+                <input type="number" id="gastoValor" placeholder="0.00" required>
+            </div>
+            
+            <label id="labelTipoPago">Tipo de Pago:</label>
+            <div class="payment-type-group">
+                <input type="radio" id="pagoContado" name="tipoPago" value="Contado" checked>
+                <label for="pagoContado"><i class="fas fa-money-bill-wave"></i> <span data-lang-key="cash">Contado</span></label>
+                
+                <input type="radio" id="pagoTarjeta" name="tipoPago" value="Tarjeta">
+                <label for="pagoTarjeta"><i class="fas fa-credit-card"></i> <span data-lang-key="card">Tarjeta</span></label>
+                
+                <input type="radio" id="pagoTransferencia" name="tipoPago" value="Transferencia">
+                <label for="pagoTransferencia"><i class="fas fa-exchange-alt"></i> <span data-lang-key="transfer">Transf.</span></label>
+            </div>
+
+            <div id="botonesRegistro">
+                <button class="btn btn-primary" id="btnAddGasto" onclick="agregarGasto()">➕ Añadir Gasto</button>
+            </div>
+            
+        </div>
+
         <h2 id="titleUltimosGastos" style="text-align: center; margin-top: 30px; font-size: 1.2em;">Gastos del Mes</h2>
-        
         <div class="table-info-alert" data-lang-key="alertClickEdit">Clic en la fila para editar o eliminar.</div>
         <table id="tablaUltimosGastos" class="tabla-gastos">
             <thead>
@@ -53,13 +433,144 @@
     </div>
 
     <div id="mensual" class="pantalla">
+        <h2 id="titleResumenMensual">Resumen Mensual</h2>
+        
+        <div class="filtro-container-inline">
+            <select id="filtroMes" onchange="actualizarResumenMensual()"></select>
+            <select id="filtroAnioMensual" onchange="actualizarResumenMensual()"></select>
         </div>
+        
+        <div class="form-group">
+            <select id="filtroTipoPagoMensual" onchange="actualizarResumenMensual()">
+                <option value="TODOS" data-lang-key="paymentTypeTotal">Tipo de Pago (Total)</option>
+                <option value="Contado" data-lang-key="cash">Contado</option>
+                <option value="Tarjeta" data-lang-key="card">Tarjeta</option>
+                <option value="Transferencia" data-lang-key="transfer">Transf.</option>
+            </select>
+        </div>
+        
+        <h3 id="titleTotalCategoriaMensual" style="font-size: 1.1em; margin-top: 0;">Total por Categoría</h3>
+        <div class="table-info-alert" data-lang-key="alertClickDetail">Clic en la fila para ver el detalle.</div>
+        <table id="tablaResumenMensual" class="tabla-gastos">
+            <thead>
+                <tr><th data-lang-key="category">Categoría</th><th data-lang-key="total">Total</th><th data-lang-key="percent">%</th></tr>
+            </thead>
+            <tbody>
+                </tbody>
+            <tfoot>
+                 <tr><td colspan="2" data-lang-key="totalSum">TOTAL</td><td id="totalResumenMensual" class="gasto-valor"></td></tr>
+            </tfoot>
+        </table>
+
+        <div id="detalleMensual">
+            <h3><span data-lang-key="detail">Detalle</span>: <span id="detalleCategoriaMensual"></span></h3>
+            <div class="table-info-alert" data-lang-key="alertClickEdit">Clic en la fila para editar o eliminar.</div>
+            <table id="tablaDetalleMensual" class="tabla-gastos">
+                <thead>
+                    <tr><th data-lang-key="date">Fecha</th><th data-lang-key="desc">Descripción</th><th data-lang-key="value">Valor</th></tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                    <tr><td colspan="2" data-lang-key="totalSum">TOTAL</td><td id="totalDetalleMensual" class="gasto-valor"></td></tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <h3 id="titleChartMensual" style="font-size: 1.1em; margin-top: 30px;">Gráfico de Distribución</h3>
+        <div class="chart-container" id="chartMensualContainer">
+            <canvas id="chartMensualCanvas"></canvas>
+        </div>
+
+        <button class="btn btn-success" id="btnExportMes" onclick="exportarGastosCSV('mensual')">⬇️ Exportar Registros del Mes</button>
+    </div>
 
     <div id="historico" class="pantalla">
+        <h2 id="titleResumenHistorico">Resumen Histórico</h2>
+
+        <div class="filtro-container-inline">
+            <select id="filtroAnioHistorico" onchange="actualizarResumenHistorico()"></select>
+            <select id="filtroTipoPagoHistorico" onchange="actualizarResumenHistorico()">
+                <option value="TODOS" data-lang-key="paymentTypeTotal">Tipo de Pago (Total)</option>
+                <option value="Contado" data-lang-key="cash">Contado</option>
+                <option value="Tarjeta" data-lang-key="card">Tarjeta</option>
+                <option value="Transferencia" data-lang-key="transfer">Transf.</option>
+            </select>
+        </div>
+        
+        <h3 id="titleTotalCatHistorico" style="font-size: 1.1em; margin-top: 0;">Total por Categoría (Año)</h3>
+        <div class="table-info-alert" data-lang-key="alertClickDetail">Clic en la fila para ver el detalle.</div>
+        <table id="tablaResumenHistorico" class="tabla-gastos">
+            <thead>
+                <tr><th data-lang-key="category">Categoría</th><th data-lang-key="total">Total</th><th data-lang-key="percent">%</th></tr>
+            </thead>
+            <tbody>
+                </tbody>
+            <tfoot>
+                 <tr><td colspan="2" data-lang-key="totalSum">TOTAL</td><td id="totalResumenHistorico" class="gasto-valor"></td></tr>
+            </tfoot>
+        </table>
+        
+        <div id="detalleHistorico">
+            <h3><span data-lang-key="detail">Detalle</span>: <span id="detalleCategoriaHistorico"></span></h3>
+            <div class="table-info-alert" data-lang-key="alertClickEdit">Clic en la fila para editar o eliminar.</div>
+            <table id="tablaDetalleHistorico" class="tabla-gastos">
+                <thead>
+                    <tr><th data-lang-key="date">Fecha</th><th data-lang-key="desc">Descripción</th><th data-lang-key="value">Valor</th></tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                    <tr><td colspan="2" data-lang-key="totalSum">TOTAL</td><td id="totalDetalleHistorico" class="gasto-valor"></td></tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <h3 id="titleChartHistorico" style="font-size: 1.1em; margin-top: 30px;">Distribución General del Año</h3>
+        <div class="chart-container" id="chartHistoricoContainer">
+            <canvas id="chartHistoricoCanvas"></canvas>
         </div>
 
+        <button class="btn btn-success" id="btnExportYear" onclick="exportarGastosCSV('historico')">⬇️ Exportar Registros del Año</button>
+    </div>
+
     <div id="configuracion" class="pantalla">
+        <h2 id="titleConfig">Configuración</h2>
+        
+        <div class="form-group">
+            <label id="labelConfigMoneda" for="configMoneda">Símbolo de Moneda (ej: $):</label>
+            <input type="text" id="configMoneda" value="$" onchange="guardarConfig()">
         </div>
+
+        <div class="form-group">
+            <label id="labelConfigIdioma" for="configIdioma">Idioma de la Aplicación:</label>
+            <select id="configIdioma" onchange="guardarConfig()">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+
+        <h3 id="titleGestionCategorias">Gestión de Categorías</h3>
+        <table id="tablaCategorias" class="tabla-gastos">
+            <thead>
+                <tr><th data-lang-key="category">Categoría</th><th data-lang-key="action">Acción</th></tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+
+        <div class="form-group" style="margin-top: 20px;">
+            <input type="text" id="nuevaCategoria" placeholder="Nombre de nueva categoría">
+            <button class="btn btn-primary" id="btnAddCategory" onclick="agregarCategoria()">Añadir Categoría</button>
+        </div>
+
+        <h3 id="titleUtilidadesDatos" style="margin-top: 40px;">Utilidades de Datos</h3>
+        
+        <button class="btn btn-success" id="btnExportAll" onclick="exportarGastosCSV('all')">⬇️ Exportar Todos los Datos (CSV)</button>
+        
+        <input type="file" id="inputImportarCSV" accept=".csv" style="display: none;">
+        <button class="btn btn-primary" id="btnImport" onclick="document.getElementById('inputImportarCSV').click()">⬆️ Importar desde CSV</button>
+        
+        <button class="btn btn-danger" id="btnDeleteAll" onclick="limpiarTodosLosDatos()">⚠️ Eliminar TODOS los Datos</button>
+    </div>
 
     <div class="nav-tabs">
         <button onclick="mostrarPantalla('ingreso', this)" class="active"><i class="fas fa-plus-circle"></i> <span data-lang-key="navEntry">Ingreso</span></button>
@@ -69,7 +580,51 @@
     </div>
 
     <div id="modalEdicion" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="cerrarModal()">&times;</span>
+            <h2 id="modalTitle" style="color: var(--primary-dark); margin-top: 0;">Editar Gasto</h2>
+
+            <div class="form-group">
+                <label for="modalFecha">Fecha:</label>
+                <input type="date" id="modalFecha" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="modalCategoria">Categoría:</label>
+                <select id="modalCategoria" required>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="modalDescripcion">Descripción:</label>
+                <input type="text" id="modalDescripcion" list="sugerenciasDescripcionesModal" placeholder="Ej: Café, Supermercado" required>
+                <datalist id="sugerenciasDescripcionesModal"></datalist>
+            </div>
+
+            <div class="form-group">
+                <label for="modalValor">Valor:</label>
+                <input type="number" id="modalValor" placeholder="0.00" required>
+            </div>
+            
+            <label>Tipo de Pago:</label>
+            <div class="payment-type-group">
+                <input type="radio" id="modalPagoContado" name="modalTipoPago" value="Contado" checked>
+                <label for="modalPagoContado"><i class="fas fa-money-bill-wave"></i> Contado</label>
+                
+                <input type="radio" id="modalPagoTarjeta" name="modalTipoPago" value="Tarjeta">
+                <label for="modalPagoTarjeta"><i class="fas fa-credit-card"></i> Tarjeta</label>
+                
+                <input type="radio" id="modalPagoTransferencia" name="modalTipoPago" value="Transferencia">
+                <label for="modalPagoTransferencia"><i class="fas fa-exchange-alt"></i> Transf.</label>
+            </div>
+
+            <div id="modal-botones-edicion">
+                <button class="btn" id="btnModalGuardar" onclick="guardarEdicionDesdeModal()">Guardar</button>
+                <button class="btn" id="btnModalEliminar" onclick="eliminarGastoDesdeModal()">Eliminar</button>
+                <button class="btn" id="btnModalCancelar" onclick="cerrarModal()">Cancelar</button>
+            </div>
         </div>
+    </div>
 
 
     <script>
@@ -77,13 +632,12 @@
         // ESTRUCTURA DE DATOS, IDIOMAS Y VARIABLES GLOBALES
         // =================================================================================
         
-        // ... (MONTH_NAMES_FULL y MONTH_NAMES permanecen idénticos) ...
+        // Nombres de Meses COMPLETOS
         const MONTH_NAMES_FULL = {
             es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
             en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
         };
         const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
 
         // Diccionario de traducciones
         const TRADUCTIONS = {
@@ -176,7 +730,6 @@
         // =================================================================================
 
         function setLanguage(lang) {
-            // ... (Esta función permanece idéntica, pero ahora usará los textos actualizados de TRADUCTIONS) ...
             const t = TRADUCTIONS[lang];
             if (!t) return;
             
@@ -187,7 +740,9 @@
             document.getElementById('titleIngreso').textContent = t.titleIngreso;
             document.getElementById('titleUltimosGastos').textContent = t.titleUltimosGastos; // <-- Este tomará el nuevo texto
             document.getElementById('titleResumenMensual').textContent = t.titleResumenMensual;
-            // ... (resto de la función idéntico) ...
+            document.getElementById('titleTotalCategoriaMensual').textContent = t.titleTotalCategoriaMensual;
+            document.getElementById('titleChartMensual').textContent = t.titleChartMensual;
+            document.getElementById('titleResumenHistorico').textContent = t.titleResumenHistorico;
             document.getElementById('titleTotalCatHistorico').textContent = t.titleTotalCatHistorico;
             document.getElementById('titleChartHistorico').textContent = t.titleChartHistorico;
             document.getElementById('titleConfig').textContent = t.titleConfig;
@@ -233,7 +788,6 @@
         }
 
         function updateTableHeadersAndFooters() {
-            // ... (Esta función permanece idéntica) ...
             const t = TRADUCTIONS[config.idioma];
 
             // Tabla 1: Ultimos Gastos
@@ -341,41 +895,192 @@
             }
         }
 
-        // ... (inicializarFecha, inicializarSelectoresMesAnio, guardarConfig, cargarConfig, etc. permanecen idénticas) ...
         function inicializarFecha() {
-            // ... (idéntico) ...
+            const fechaInput = document.getElementById('gastoFecha');
+            const hoy = new Date();
+            const yyyy = hoy.getFullYear();
+            const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+            const dd = String(hoy.getDate()).padStart(2, '0');
+            fechaInput.value = `${yyyy}-${mm}-${dd}`;
         }
         
         function inicializarSelectoresMesAnio() {
-            // ... (idéntico) ...
+            const currentYear = new Date().getFullYear();
+            const startYear = 2024;
+            
+            const selectMes = document.getElementById('filtroMes');
+            const selectsAnio = [document.getElementById('filtroAnioMensual'), document.getElementById('filtroAnioHistorico')];
+            
+            // Meses (NOMBRES COMPLETOS Y EN EL IDIOMA ACTUAL)
+            const monthNames = MONTH_NAMES_FULL[config.idioma] || MONTH_NAMES_FULL['es'];
+            const currentMonth = new Date().getMonth() + 1;
+
+            selectMes.innerHTML = '';
+            monthNames.forEach((nombre, index) => {
+                const option = document.createElement('option');
+                option.value = index + 1;
+                option.textContent = nombre; // Nombre completo
+                selectMes.appendChild(option);
+            });
+            selectMes.value = currentMonth;
+            
+            // Años
+            const currentSelectedYearMensual = document.getElementById('filtroAnioMensual').value || currentYear;
+            const currentSelectedYearHistorico = document.getElementById('filtroAnioHistorico').value || currentYear;
+
+            selectsAnio.forEach(select => select.innerHTML = '');
+            for (let y = currentYear + 1; y >= startYear; y--) {
+                selectsAnio.forEach(select => {
+                    const option = document.createElement('option');
+                    option.value = y;
+                    option.textContent = y;
+                    select.appendChild(option);
+                });
+            }
+            // Restaurar valores o usar el actual
+            document.getElementById('filtroAnioMensual').value = currentSelectedYearMensual;
+            document.getElementById('filtroAnioHistorico').value = currentSelectedYearHistorico;
         }
+
+        // =================================================================================
+        // MANEJO DE CONFIGURACIÓN
+        // =================================================================================
         function guardarConfig() {
-            // ... (idéntico) ...
+            config.monedaSimbolo = document.getElementById('configMoneda').value || '$';
+            config.idioma = document.getElementById('configIdioma').value;
+            config.categorias.sort((a, b) => a.localeCompare(b));
+
+            localStorage.setItem('config', JSON.stringify(config));
+            
+            setLanguage(config.idioma);
+            
+            cargarCategoriasEnSelect();
+            cargarTablaCategorias();
+            
+            // Actualizar vistas si son las activas
+            const activeScreen = document.querySelector('.pantalla.activa').id;
+            if (activeScreen === 'mensual') actualizarResumenMensual();
+            if (activeScreen === 'historico') actualizarResumenHistorico();
+            if (activeScreen === 'ingreso') actualizarTablaUltimosGastos();
         }
+
         function cargarConfig() {
-            // ... (idéntico) ...
+            document.getElementById('configMoneda').value = config.monedaSimbolo;
+            document.getElementById('configIdioma').value = config.idioma;
+            cargarCategoriasEnSelect();
+            cargarTablaCategorias();
         }
+
         function cargarCategoriasEnSelect() {
-            // ... (idéntico) ...
+            const selects = [document.getElementById('gastoCategoria'), document.getElementById('modalCategoria')];
+            
+            selects.forEach(select => {
+                select.innerHTML = '';
+                config.categorias.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat;
+                    select.appendChild(option);
+                });
+            });
+
+            // Restaurar la última categoría usada en el formulario de ingreso
+            if (config.lastCategory && config.categorias.includes(config.lastCategory)) {
+                document.getElementById('gastoCategoria').value = config.lastCategory;
+            }
         }
+        
         function cargarTablaCategorias() {
-            // ... (idéntico) ...
+            const tbody = document.getElementById('tablaCategorias').querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            config.categorias.forEach(cat => {
+                const tr = document.createElement('tr');
+                
+                const tdCat = document.createElement('td');
+                tdCat.textContent = cat;
+                
+                const tdAction = document.createElement('td');
+                const btnDelete = document.createElement('button');
+                btnDelete.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                btnDelete.style.color = 'var(--danger-color)';
+                btnDelete.style.background = 'none';
+                btnDelete.style.border = 'none';
+                btnDelete.style.cursor = 'pointer';
+                btnDelete.onclick = () => eliminarCategoria(cat);
+                
+                tdAction.appendChild(btnDelete);
+                tr.appendChild(tdCat);
+                tr.appendChild(tdAction);
+                tbody.appendChild(tr);
+            });
         }
+        
         function agregarCategoria() {
-            // ... (idéntico) ...
+            const input = document.getElementById('nuevaCategoria');
+            const nuevoNombre = input.value.trim();
+            
+            if (nuevoNombre && !config.categorias.find(c => c.toLowerCase() === nuevoNombre.toLowerCase())) {
+                config.categorias.push(nuevoNombre);
+                guardarConfig();
+                input.value = '';
+            }
         }
+        
         function eliminarCategoria(catNombre) {
-            // ... (idéntico) ...
+            if (confirm(`¿Eliminar la categoría "${catNombre}"? Los gastos asociados NO se eliminarán, pero deberás recategorizarlos.`)) {
+                config.categorias = config.categorias.filter(c => c !== catNombre);
+                guardarConfig();
+            }
         }
 
         // =================================================================================
         // MANEJO DE GASTOS
         // =================================================================================
         function agregarGasto() {
-            // ... (idéntico) ...
+            const fecha = document.getElementById('gastoFecha').value;
+            const categoria = document.getElementById('gastoCategoria').value;
+            const descripcion = document.getElementById('gastoDescripcion').value.trim();
+            const valor = parseFloat(document.getElementById('gastoValor').value);
+            const tipoPago = document.querySelector('input[name="tipoPago"]:checked').value;
+
+            if (!fecha || !categoria || !descripcion || isNaN(valor) || valor <= 0) {
+                alert(TRADUCTIONS[config.idioma].alertMissing);
+                return;
+            }
+
+            const nuevoGasto = {
+                id: Date.now(),
+                fecha,
+                categoria,
+                descripcion,
+                valor,
+                tipoPago
+            };
+
+            gastos.unshift(nuevoGasto);
+            
+            // Guardar descripción y última categoría usada
+            if (!descripcionesUsadas.includes(descripcion)) {
+                descripcionesUsadas.push(descripcion);
+            }
+            config.lastCategory = categoria;
+
+            guardarDatos();
+            guardarConfig(); // Guarda la última categoría
+            
+            // Limpiar formulario y recargar
+            document.getElementById('gastoDescripcion').value = '';
+            document.getElementById('gastoValor').value = '';
+            cargarSugerenciasDescripciones();
+            actualizarTablaUltimosGastos();
         }
+
         function guardarDatos() {
-            // ... (idéntico) ...
+            // Ordenar por fecha descendente antes de guardar
+            gastos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            localStorage.setItem('gastos', JSON.stringify(gastos));
+            localStorage.setItem('descripcionesUsadas', JSON.stringify(descripcionesUsadas));
         }
 
         // =================================================================================
@@ -424,25 +1129,194 @@
         }
 
         function actualizarResumenMensual() {
-            // ... (idéntico) ...
+            const mes = document.getElementById('filtroMes').value;
+            const anio = document.getElementById('filtroAnioMensual').value;
+            const tipoPago = document.getElementById('filtroTipoPagoMensual').value;
+
+            // Filtrar gastos
+            const gastosFiltrados = gastos.filter(g => {
+                const fechaGasto = new Date(g.fecha + 'T00:00:00'); // Asegurar zona horaria local
+                const mesGasto = fechaGasto.getMonth() + 1;
+                const anioGasto = fechaGasto.getFullYear();
+                
+                const filtroPago = (tipoPago === 'TODOS' || g.tipoPago === tipoPago);
+
+                return mesGasto == mes && anioGasto == anio && filtroPago;
+            });
+
+            // Agrupar por categoría
+            const resumen = {};
+            let totalMes = 0;
+
+            gastosFiltrados.forEach(g => {
+                if (!resumen[g.categoria]) {
+                    resumen[g.categoria] = 0;
+                }
+                resumen[g.categoria] += g.valor;
+                totalMes += g.valor;
+            });
+
+            // Convertir a array y ordenar
+            const resumenArray = Object.entries(resumen).sort((a, b) => b[1] - a[1]);
+
+            // Dibujar tabla
+            const tbody = document.getElementById('tablaResumenMensual').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            if (resumenArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center;">No hay gastos este mes.</td></tr>`;
+            } else {
+                 resumenArray.forEach(([categoria, total]) => {
+                    const porcentaje = totalMes > 0 ? (total / totalMes) * 100 : 0;
+                    const tr = document.createElement('tr');
+                    
+                    // Añadido evento click para mostrar detalle
+                    tr.onclick = () => mostrarDetalleMensual(gastosFiltrados, categoria);
+                    
+                    tr.innerHTML = `
+                        <td>${categoria}</td>
+                        <td class="gasto-valor">${formatearMoneda(total)}</td>
+                        <td class="gasto-percent">${porcentaje.toFixed(1)}%</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('totalResumenMensual').textContent = formatearMoneda(totalMes);
+
+            // Dibujar gráfico
+            const labels = resumenArray.map(item => item[0]);
+            const data = resumenArray.map(item => item[1]);
+            dibujarGrafico(chartMensualInstance, 'chartMensualCanvas', labels, data, (newInstance) => chartMensualInstance = newInstance);
+            
+            // Ocultar detalle
+            document.getElementById('detalleMensual').style.display = 'none';
         }
         
         function mostrarDetalleMensual(gastosFiltradosMes, categoria) {
-            // ... (idéntico) ...
+            const detalleDiv = document.getElementById('detalleMensual');
+            document.getElementById('detalleCategoriaMensual').textContent = categoria;
+            
+            const gastosCategoria = gastosFiltradosMes.filter(g => g.categoria === categoria);
+            // Ordenar por fecha para el detalle
+            gastosCategoria.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+            
+            const tbody = document.getElementById('tablaDetalleMensual').querySelector('tbody');
+            tbody.innerHTML = '';
+            let totalDetalle = 0;
+            
+            gastosCategoria.forEach(g => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => abrirModalEdicion(g.id);
+                tr.innerHTML = `
+                    <td>${formatearFechaCorta(g.fecha)}</td>
+                    <td>${g.descripcion}</td>
+                    <td class="gasto-valor">${formatearMoneda(g.valor)}</td>
+                `;
+                tbody.appendChild(tr);
+                totalDetalle += g.valor;
+            });
+            
+            document.getElementById('totalDetalleMensual').textContent = formatearMoneda(totalDetalle);
+            detalleDiv.style.display = 'block';
+            
+            // Scroll suave hacia el detalle
+            detalleDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+
         function actualizarResumenHistorico() {
-            // ... (idéntico) ...
+            const anio = document.getElementById('filtroAnioHistorico').value;
+            const tipoPago = document.getElementById('filtroTipoPagoHistorico').value;
+
+            // Filtrar gastos
+            const gastosFiltrados = gastos.filter(g => {
+                const fechaGasto = new Date(g.fecha + 'T00:00:00');
+                const anioGasto = fechaGasto.getFullYear();
+                const filtroPago = (tipoPago === 'TODOS' || g.tipoPago === tipoPago);
+                return anioGasto == anio && filtroPago;
+            });
+
+            // Agrupar por categoría
+            const resumen = {};
+            let totalAnio = 0;
+
+            gastosFiltrados.forEach(g => {
+                if (!resumen[g.categoria]) {
+                    resumen[g.categoria] = 0;
+                }
+                resumen[g.categoria] += g.valor;
+                totalAnio += g.valor;
+            });
+
+            // Convertir a array y ordenar
+            const resumenArray = Object.entries(resumen).sort((a, b) => b[1] - a[1]);
+
+            // Dibujar tabla
+            const tbody = document.getElementById('tablaResumenHistorico').querySelector('tbody');
+            tbody.innerHTML = '';
+
+             if (resumenArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center;">No hay gastos este año.</td></tr>`;
+            } else {
+                resumenArray.forEach(([categoria, total]) => {
+                    const porcentaje = totalAnio > 0 ? (total / totalAnio) * 100 : 0;
+                    const tr = document.createElement('tr');
+                    
+                    // Añadido evento click para mostrar detalle
+                    tr.onclick = () => mostrarDetalleHistorico(gastosFiltrados, categoria);
+
+                    tr.innerHTML = `
+                        <td>${categoria}</td>
+                        <td class="gasto-valor">${formatearMoneda(total)}</td>
+                        <td class="gasto-percent">${porcentaje.toFixed(1)}%</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            document.getElementById('totalResumenHistorico').textContent = formatearMoneda(totalAnio);
+            
+             // Dibujar gráfico
+            const labels = resumenArray.map(item => item[0]);
+            const data = resumenArray.map(item => item[1]);
+            dibujarGrafico(chartHistoricoInstance, 'chartHistoricoCanvas', labels, data, (newInstance) => chartHistoricoInstance = newInstance);
+
+            // Ocultar detalle
+            document.getElementById('detalleHistorico').style.display = 'none';
         }
         
          function mostrarDetalleHistorico(gastosFiltradosAnio, categoria) {
-            // ... (idéntico) ...
+            const detalleDiv = document.getElementById('detalleHistorico');
+            document.getElementById('detalleCategoriaHistorico').textContent = categoria;
+            
+            const gastosCategoria = gastosFiltradosAnio.filter(g => g.categoria === categoria);
+            gastosCategoria.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+            
+            const tbody = document.getElementById('tablaDetalleHistorico').querySelector('tbody');
+            tbody.innerHTML = '';
+            let totalDetalle = 0;
+            
+            gastosCategoria.forEach(g => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => abrirModalEdicion(g.id);
+                tr.innerHTML = `
+                    <td>${formatearFechaCorta(g.fecha)}</td>
+                    <td>${g.descripcion}</td>
+                    <td class="gasto-valor">${formatearMoneda(g.valor)}</td>
+                `;
+                tbody.appendChild(tr);
+                totalDetalle += g.valor;
+            });
+            
+            document.getElementById('totalDetalleHistorico').textContent = formatearMoneda(totalDetalle);
+            detalleDiv.style.display = 'block';
+            detalleDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // =================================================================================
         // FUNCIONES DE GRÁFICOS
         // =================================================================================
-        
         function dibujarGrafico(chartInstance, canvasId, labels, data, callback) {
             if (chartInstance) {
                 chartInstance.destroy();
@@ -543,19 +1417,38 @@
         }
         
         function cargarSugerenciasDescripciones() {
-            // ... (idéntico) ...
+            const datalist = document.getElementById('sugerenciasDescripciones');
+            const datalistModal = document.getElementById('sugerenciasDescripcionesModal');
+            datalist.innerHTML = '';
+            datalistModal.innerHTML = '';
+            
+            descripcionesUsadas.forEach(desc => {
+                const option = document.createElement('option');
+                option.value = desc;
+                datalist.appendChild(option);
+                datalistModal.appendChild(option.cloneNode(true));
+            });
         }
 
         function formatearMoneda(valor) {
-            // ... (idéntico) ...
+            return `${config.monedaSimbolo} ${valor.toFixed(2)}`;
         }
 
         function formatearFechaCorta(fechaStr) {
-            // ... (idéntico) ...
+            // Formato 'YYYY-MM-DD'
+            const partes = fechaStr.split('-');
+            // Formato 'DD/MM'
+            return `${partes[2]}/${partes[1]}`;
         }
         
         function abreviarCategoria(categoria) {
-            // ... (idéntico) ...
+            // Intenta abreviar por palabras
+            const palabras = categoria.split(' ');
+            if (palabras.length > 1) {
+                return palabras.map(p => p.substring(0, 1)).join('').toUpperCase();
+            }
+            // Si es una sola palabra, toma las 3 primeras letras
+            return categoria.substring(0, 3).toUpperCase();
         }
         
         // =================================================================================
@@ -563,23 +1456,98 @@
         // =================================================================================
         
         function abrirModalEdicion(id) {
-            // ... (idéntico) ...
+            const gasto = gastos.find(g => g.id === id);
+            if (!gasto) {
+                alert(TRADUCTIONS[config.idioma].alertFoundError);
+                return;
+            }
+            
+            gastoEditandoId = id;
+            
+            // Cargar datos en el modal
+            document.getElementById('modalFecha').value = gasto.fecha;
+            document.getElementById('modalCategoria').value = gasto.categoria;
+            document.getElementById('modalDescripcion').value = gasto.descripcion;
+            document.getElementById('modalValor').value = gasto.valor;
+            
+            // Marcar el tipo de pago correcto
+            document.querySelector(`input[name="modalTipoPago"][value="${gasto.tipoPago}"]`).checked = true;
+            
+            // Cargar sugerencias al modal
+            cargarSugerenciasDescripciones();
+            
+            // Mostrar el modal
+            document.getElementById('modalEdicion').style.display = 'block';
         }
         
         function cerrarModal() {
-            // ... (idéntico) ...
+            document.getElementById('modalEdicion').style.display = 'none';
+            gastoEditandoId = null;
         }
 
         function guardarEdicionDesdeModal() {
-            // ... (idéntico) ...
+            if (!gastoEditandoId) return;
+
+            const fecha = document.getElementById('modalFecha').value;
+            const categoria = document.getElementById('modalCategoria').value;
+            const descripcion = document.getElementById('modalDescripcion').value.trim();
+            const valor = parseFloat(document.getElementById('modalValor').value);
+            const tipoPago = document.querySelector('input[name="modalTipoPago"]:checked').value;
+
+            if (!fecha || !categoria || !descripcion || isNaN(valor) || valor <= 0) {
+                 alert(TRADUCTIONS[config.idioma].alertMissing);
+                return;
+            }
+
+            // Actualizar el gasto en el array
+            gastos = gastos.map(g => {
+                if (g.id === gastoEditandoId) {
+                    return { id: g.id, fecha, categoria, descripcion, valor, tipoPago };
+                }
+                return g;
+            });
+            
+            // Actualizar descripciones usadas
+            if (!descripcionesUsadas.includes(descripcion)) {
+                descripcionesUsadas.push(descripcion);
+            }
+
+            guardarDatos();
+            
+            // Actualizar todas las vistas relevantes
+            actualizarVistasPostEdicion();
+            
+            cerrarModal();
         }
 
         function eliminarGastoDesdeModal() {
-            // ... (idéntico) ...
+            if (!gastoEditandoId) return;
+            
+            if (confirm(TRADUCTIONS[config.idioma].confirmDelete)) {
+                gastos = gastos.filter(g => g.id !== gastoEditandoId);
+                guardarDatos();
+                actualizarVistasPostEdicion();
+                cerrarModal();
+            }
         }
         
         function actualizarVistasPostEdicion() {
-            // ... (idéntico) ...
+            // Actualiza la vista activa
+            const activeScreen = document.querySelector('.pantalla.activa').id;
+            
+            if (activeScreen === 'ingreso') {
+                actualizarTablaUltimosGastos();
+            } else if (activeScreen === 'mensual') {
+                actualizarResumenMensual();
+            } else if (activeScreen === 'historico') {
+                actualizarResumenHistorico();
+            }
+            
+            // También actualiza la de ingreso si no está activa, 
+            // para que esté lista cuando el usuario vuelva
+            if (activeScreen !== 'ingreso') {
+                 actualizarTablaUltimosGastos();
+            }
         }
 
 
@@ -588,18 +1556,163 @@
         // =================================================================================
 
         function exportarGastosCSV(tipo) {
-            // ... (idéntico) ...
+            let gastosAExportar = [];
+            let nombreArchivo = 'gastos_exportados.csv';
+            
+            if (tipo === 'all') {
+                gastosAExportar = [...gastos];
+                nombreArchivo = `gastos_todos.csv`;
+            } else if (tipo === 'mensual') {
+                const mes = document.getElementById('filtroMes').value;
+                const anio = document.getElementById('filtroAnioMensual').value;
+                gastosAExportar = gastos.filter(g => {
+                    const fechaGasto = new Date(g.fecha + 'T00:00:00');
+                    return (fechaGasto.getMonth() + 1) == mes && fechaGasto.getFullYear() == anio;
+                });
+                nombreArchivo = `gastos_${anio}-${mes}.csv`;
+            } else if (tipo === 'historico') {
+                const anio = document.getElementById('filtroAnioHistorico').value;
+                gastosAExportar = gastos.filter(g => {
+                    const fechaGasto = new Date(g.fecha + 'T00:00:00');
+                    return fechaGasto.getFullYear() == anio;
+                });
+                 nombreArchivo = `gastos_${anio}.csv`;
+            }
+            
+            if (gastosAExportar.length === 0) {
+                 alert(TRADUCTIONS[config.idioma].alertNoExport);
+                return;
+            }
+
+            // Ordenar por fecha ascendente para la exportación
+            gastosAExportar.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+            const header = "Fecha,Categoria,Descripcion,Valor,TipoPago,ID\n";
+            const csvRows = gastosAExportar.map(g => {
+                // Escapar comas en la descripción
+                const descripcion = `"${g.descripcion.replace(/"/g, '""')}"`;
+                return `${g.fecha},${g.categoria},${descripcion},${g.valor},${g.tipoPago},${g.id}`;
+            });
+
+            const csvString = header + csvRows.join('\n');
+            
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (navigator.msSaveBlob) { 
+                navigator.msSaveBlob(blob, nombreArchivo);
+            } else {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', nombreArchivo);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
         
         function importarGastosCSV(event) {
-            // ... (idéntico) ...
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const texto = e.target.result;
+                    const lineas = texto.split(/\r?\n/);
+                    
+                    if (lineas.length <= 1) {
+                        alert(TRADUCTIONS[config.idioma].alertCSVEmpty);
+                        return;
+                    }
+                    
+                    const header = lineas[0].toLowerCase().split(',');
+                    const datosImportados = [];
+
+                    // Buscar índices (más robusto)
+                    const idxFecha = header.indexOf("fecha");
+                    const idxCat = header.indexOf("categoria");
+                    const idxDesc = header.indexOf("descripcion");
+                    const idxValor = header.indexOf("valor");
+                    const idxTipoPago = header.indexOf("tipopago");
+
+                    if (idxFecha === -1 || idxCat === -1 || idxDesc === -1 || idxValor === -1) {
+                         alert(TRADUCTIONS[config.idioma].alertCSVError);
+                         return;
+                    }
+
+                    for (let i = 1; i < lineas.length; i++) {
+                        if (lineas[i].trim() === '') continue;
+                        
+                        // Manejo básico de comas dentro de descripciones (CSV)
+                        const valores = lineas[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+                        
+                        if (valores.length < 4) continue;
+
+                        const fecha = valores[idxFecha] ? valores[idxFecha].replace(/"/g, '') : null;
+                        const categoria = valores[idxCat] ? valores[idxCat].replace(/"/g, '') : 'Otros';
+                        const descripcion = valores[idxDesc] ? valores[idxDesc].replace(/"/g, '') : 'Importado';
+                        const valor = parseFloat(valores[idxValor] ? valores[idxValor].replace(/"/g, '') : 0);
+                        
+                        // idxTipoPago puede ser -1 si no existe, por eso se comprueba
+                        let tipoPagoNormalizado = 'Contado'; // Default
+                        if (idxTipoPago !== -1 && valores[idxTipoPago]) {
+                            let tipoPagoRaw = valores[idxTipoPago].replace(/"/g, '').toLowerCase();
+                            if (tipoPagoRaw.includes('tarjeta') || tipoPagoRaw.includes('card') || tipoPagoRaw.includes('crédito')) tipoPagoNormalizado = 'Tarjeta';
+                            if (tipoPagoRaw.includes('transfer')) tipoPagoNormalizado = 'Transferencia';
+                        }
+                        
+                        if (!fecha || isNaN(valor) || valor <= 0) continue; // Saltar registros inválidos
+
+                        datosImportados.push({
+                            id: Date.now() + i, // ID único
+                            fecha: fecha,
+                            categoria: categoria,
+                            descripcion: descripcion,
+                            valor: valor,
+                            tipoPago: tipoPagoNormalizado
+                        });
+                    }
+
+                    gastos = datosImportados.concat(gastos); // Añadir nuevos al inicio
+                    
+                    // Añadir nuevas categorías y descripciones
+                    datosImportados.forEach(g => {
+                        if (g.descripcion && !descripcionesUsadas.includes(g.descripcion)) {
+                            descripcionesUsadas.push(g.descripcion);
+                        }
+                        if (g.categoria && !config.categorias.includes(g.categoria)) {
+                             config.categorias.push(g.categoria);
+                        }
+                    });
+                    
+                    guardarDatos();
+                    guardarConfig();
+
+                    alert(TRADUCTIONS[config.idioma].alertImportSuccess(datosImportados.length));
+                    inicializarApp(); // Reiniciar la app para reflejar todo
+
+                    event.target.value = null; // Limpiar el input file
+
+                } catch (error) {
+                    alert(TRADUCTIONS[config.idioma].alertCSVError);
+                    console.error("Error de importación:", error);
+                    event.target.value = null;
+                }
+            };
+            reader.readAsText(file);
         }
 
+
         function limpiarTodosLosDatos() {
-            // ... (idéntico) ...
+            if (confirm(TRADUCTIONS[config.idioma].confirmDeleteAll)) {
+                localStorage.clear();
+                window.location.reload(); 
+            }
         }
     </script>
-    
+
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

@@ -1,5 +1,5 @@
 // Nombre de la caché (cámbialo a v2 si haces actualizaciones)
-const CACHE_NAME = 'gastos-app-cache-v1';
+const CACHE_NAME = 'gastos-app-cache-v2';
 
 // Archivos que la app necesita para funcionar offline
 const urlsToCache = [
@@ -39,4 +39,5 @@ self.addEventListener('fetch', event => {
         return fetch(event.request);
       })
   );
+
 });

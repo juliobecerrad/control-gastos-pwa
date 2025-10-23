@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="appTitle">Control de Gastos (v2.8)</title>
+    
+    <meta name="theme-color" content="#007bff">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    
+    <style>
+        /* ... (Tu CSS permanece idéntico) ... */
+        :root {
+            --primary-color: #007bff; /* Azul primario */
+            /* ... etc ... */
+        }
+        body {
+            font-family: Arial, sans-serif;
+            /* ... etc ... */
+        }
+        /* ... (El resto de tus estilos) ... */
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span id="appLogo"><i class="fas fa-hand-holding-usd"></i> <span id="logoTitle">Control Gastos</span></span>
+    </div>
+
+    <div id="ingreso" class="pantalla activa">
+        
+        <div id="formulario-gasto">
+            </div>
+
+        <h2 id="titleUltimosGastos" style="text-align: center; margin-top: 30px; font-size: 1.2em;">Gastos del Mes</h2>
+        
+        <div class="table-info-alert" data-lang-key="alertClickEdit">Clic en la fila para editar o eliminar.</div>
+        <table id="tablaUltimosGastos" class="tabla-gastos">
+            <thead>
+                <tr><th data-lang-key="date">Fecha</th><th data-lang-key="cat">Cat.</th><th data-lang-key="desc">Descripción</th><th data-lang-key="value">Valor</th></tr>
+            </thead>
+            <tbody>
+                </tbody>
+            <tfoot>
+                <tr><td colspan="3" data-lang-key="totalSum">TOTAL</td><td id="totalUltimosGastos" class="gasto-valor"></td></tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div id="mensual" class="pantalla">
+        </div>
+
+    <div id="historico" class="pantalla">
+        </div>
+
+    <div id="configuracion" class="pantalla">
+        </div>
+
+    <div class="nav-tabs">
+        <button onclick="mostrarPantalla('ingreso', this)" class="active"><i class="fas fa-plus-circle"></i> <span data-lang-key="navEntry">Ingreso</span></button>
+        <button onclick="mostrarPantalla('mensual', this)"><i class="fas fa-chart-pie"></i> <span data-lang-key="navMonthly">Mensual</span></button>
+        <button onclick="mostrarPantalla('historico', this)"><i class="fas fa-list-alt"></i> <span data-lang-key="navHistory">Histórico</span></button>
+        <button onclick="mostrarPantalla('configuracion', this)"><i class="fas fa-cogs"></i> <span data-lang-key="navConfig">Config</span></button>
+    </div>
+
+    <div id="modalEdicion" class="modal">
+        </div>
+
+
+    <script>
+        // =================================================================================
+        // ESTRUCTURA DE DATOS, IDIOMAS Y VARIABLES GLOBALES
+        // =================================================================================
+        
+        // ... (MONTH_NAMES_FULL y MONTH_NAMES permanecen idénticos) ...
+        const MONTH_NAMES_FULL = {
+            es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+            en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+        };
+        const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+
+        // Diccionario de traducciones
+        const TRADUCTIONS = {
+            es: {
+                appTitle: "Control de Gastos (v2.8)",
+                logoTitle: "Control Gastos",
+                navEntry: "Ingreso", navMonthly: "Mensual", navHistory: "Histórico", navConfig: "Config",
+                titleIngreso: "Ingreso de Gasto", 
+                
+                // --- CAMBIO 1: Texto de título actualizado ---
+                titleUltimosGastos: "Gastos del Mes", 
+                
+                labelGastoFecha: "Fecha:", labelGastoCategoria: "Categoría:", labelGastoDescripcion: "Descripción:", labelGastoValor: "Valor:", labelTipoPago: "Tipo de Pago:",
+                cash: "Contado", card: "Tarjeta", transfer: "Transf.", paymentTypeTotal: "Tipo de Pago (Total)", 
+                btnAddGasto: "➕ Añadir Gasto", saveEdit: "Guardar", delete: "Eliminar", cancel: "Cancelar",
+                date: "Fecha", cat: "Cat.", desc: "Descripción", value: "Valor", category: "Categoría", total: "Total", action: "Acción", month: "Mes", percent: "%", totalSum: "TOTAL",
+                titleResumenMensual: "Resumen Mensual", titleTotalCategoriaMensual: "Total por Categoría", titleChartMensual: "Gráfico de Distribución",
+                btnExportMes: "⬇️ Exportar Registros del Mes",
+                titleResumenHistorico: "Resumen Histórico", titleTotalCatHistorico: "Total por Categoría (Año)", titleChartHistorico: "Distribución General del Año",
+                btnExportYear: "⬇️ Exportar Registros del Año",
+                titleConfig: "Configuración", labelConfigMoneda: "Símbolo de Moneda (ej: $):", labelConfigIdioma: "Idioma de la Aplicación:",
+                titleGestionCategorias: "Gestión de Categorías", btnAddCategory: "Añadir Categoría", titleUtilidadesDatos: "Utilidades de Datos",
+                btnExportAll: "⬇️ Exportar Todos los Datos (CSV)", btnImport: "⬆️ Importar desde CSV", btnDeleteAll: "⚠️ Eliminar TODOS los Datos",
+                detail: "Detalle",
+                alertMissing: "Por favor, rellena todos los campos correctamente.", alertFoundError: "Error al encontrar el gasto para editar.",
+                alertValueInvalid: "Por favor, ingrese un valor válido.", confirmDelete: "¿Está seguro de que desea eliminar este gasto?",
+                confirmDeleteAll: "ADVERTENCIA: ¿Está seguro de que desea eliminar TODOS sus gastos y configuraciones? Esta acción es irreversible.",
+                alertNoExport: "No hay datos para exportar en este filtro.", alertCSVEmpty: "El archivo CSV está vacío o no tiene datos.",
+                alertCSVError: "Error al procesar el archivo CSV. Asegúrate de que el formato sea correcto.",
+                alertImportSuccess: (count) => `Éxito! Se han importado ${count} gastos.`,
+                alertClickEdit: "Clic en la fila para editar o eliminar.",
+                alertClickDetail: "Clic en la fila para ver el detalle.",
+                modalTitle: "Editar Gasto",
+                modalSave: "Guardar",
+                modalDelete: "Eliminar",
+                modalCancel: "Cancelar",
+
+                // --- CAMBIO 3: Texto para el recordatorio de backup ---
+                alertBackup: "¡Recordatorio! 🗓️ Es un buen día (1ro o 15) para hacer una copia de seguridad.\n\nVe a Configuración ⚙️ > Exportar Todos los Datos."
+            },
+            en: {
+                appTitle: "Expense Tracker (v2.8)",
+                logoTitle: "Expense Tracker",
+                navEntry: "Entry", navMonthly: "Monthly", navHistory: "History", navConfig: "Config",
+                titleIngreso: "Expense Entry", 
+                
+                // --- CAMBIO 1: Texto de título actualizado ---
+                titleUltimosGastos: "Month's Expenses", 
+                
+                labelGastoFecha: "Date:", labelGastoCategoria: "Category:", labelGastoDescripcion: "Description:", labelGastoValor: "Amount:", labelTipoPago: "Payment Type:",
+                cash: "Cash", card: "Card", transfer: "Transfer", paymentTypeTotal: "Payment Type (Total)", 
+                btnAddGasto: "➕ Add Expense", saveEdit: "Save", delete: "Delete", cancel: "Cancel",
+                date: "Date", cat: "Cat.", desc: "Desc.", value: "Amount", category: "Category", total: "Total", action: "Action", month: "Month", percent: "%", totalSum: "TOTAL",
+                titleResumenMensual: "Monthly Summary", titleTotalCategoriaMensual: "Total by Category", titleChartMensual: "Distribution Chart",
+                btnExportMes: "⬇️ Export Month Records (CSV)",
+                titleResumenHistorico: "Historical Summary", titleTotalCatHistorico: "Total by Category (Year)", titleChartHistorico: "Yearly Distribution",
+                btnExportYear: "⬇️ Export Year Records (CSV)",
+                titleConfig: "Configuration", labelConfigMoneda: "Currency Symbol (e.g: $):", labelConfigIdioma: "Application Language:",
+                titleGestionCategorias: "Category Management", btnAddCategory: "Add Category", titleUtilidadesDatos: "Data Utilities",
+                btnExportAll: "⬇️ Export All Data (CSV)", btnImport: "⬆️ Import from CSV", btnDeleteAll: "⚠️ Delete ALL Data",
+                detail: "Detail",
+                alertMissing: "Please fill in all fields correctly.", alertFoundError: "Error finding expense for editing.",
+                alertValueInvalid: "Please enter a valid amount.", confirmDelete: "Are you sure you want to delete this expense?",
+                confirmDeleteAll: "WARNING: Are you sure you want to delete ALL your expenses and settings? This action is irreversible.",
+                alertNoExport: "No data to export in this filter.", alertCSVEmpty: "The CSV file is empty or has no data.",
+                alertCSVError: "Error processing CSV file. Ensure the format is correct.",
+                alertImportSuccess: (count) => `Success! Imported ${count} expenses.`,
+                alertClickEdit: "Click on the row to edit or delete.",
+                alertClickDetail: "Click on the row to see the detail.",
+                modalTitle: "Edit Expense",
+                modalSave: "Save",
+                modalDelete: "Delete",
+                modalCancel: "Cancel",
+
+                // --- CAMBIO 3: Texto para el recordatorio de backup ---
+                alertBackup: "Reminder! 🗓️ It's a good day (1st or 15th) to back up your data.\n\nGo to Config ⚙️ > Export All Data."
+            }
+        };
+        
+        let gastos;
+        let config;
+        let descripcionesUsadas;
+
+        let gastoEditandoId = null; // Usado para el modal
+        let chartMensualInstance = null;
+        let chartHistoricoInstance = null;
+        
+        // =================================================================================
+        // FUNCIONES DE TRADUCCIÓN
+        // =================================================================================
+
+        function setLanguage(lang) {
+            // ... (Esta función permanece idéntica, pero ahora usará los textos actualizados de TRADUCTIONS) ...
+            const t = TRADUCTIONS[lang];
+            if (!t) return;
+            
+            document.getElementById('appTitle').textContent = t.appTitle;
+            
+            // Títulos y etiquetas estáticas
+            document.getElementById('logoTitle').textContent = t.logoTitle;
+            document.getElementById('titleIngreso').textContent = t.titleIngreso;
+            document.getElementById('titleUltimosGastos').textContent = t.titleUltimosGastos; // <-- Este tomará el nuevo texto
+            document.getElementById('titleResumenMensual').textContent = t.titleResumenMensual;
+            // ... (resto de la función idéntico) ...
+            document.getElementById('titleTotalCatHistorico').textContent = t.titleTotalCatHistorico;
+            document.getElementById('titleChartHistorico').textContent = t.titleChartHistorico;
+            document.getElementById('titleConfig').textContent = t.titleConfig;
+            document.getElementById('titleGestionCategorias').textContent = t.titleGestionCategorias;
+            document.getElementById('titleUtilidadesDatos').textContent = t.titleUtilidadesDatos;
+            
+            // Labels del formulario de Ingreso
+            document.getElementById('labelGastoFecha').textContent = t.labelGastoFecha;
+            document.getElementById('labelGastoCategoria').textContent = t.labelGastoCategoria;
+            document.getElementById('labelGastoDescripcion').textContent = t.labelGastoDescripcion;
+            document.getElementById('labelGastoValor').textContent = t.labelGastoValor;
+            document.getElementById('labelTipoPago').textContent = t.labelTipoPago;
+            document.getElementById('labelConfigMoneda').textContent = t.labelConfigMoneda;
+            document.getElementById('labelConfigIdioma').textContent = t.labelConfigIdioma;
+
+            // Botones y elementos dinámicos
+            document.getElementById('btnAddGasto').textContent = t.btnAddGasto;
+            document.getElementById('nuevaCategoria').placeholder = lang === 'en' ? 'New category name' : 'Nombre de nueva categoría';
+
+            // Modal Titles/Buttons
+            document.getElementById('modalTitle').textContent = t.modalTitle;
+            document.getElementById('btnModalGuardar').textContent = t.modalSave;
+            document.getElementById('btnModalEliminar').textContent = t.modalDelete;
+            document.getElementById('btnModalCancelar').textContent = t.modalCancel;
+
+            // Elementos con data-lang-key (incluyendo los nuevos avisos)
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (t[key] && typeof t[key] === 'string') {
+                    el.textContent = t[key];
+                }
+            });
+
+            // Actualizar opciones de filtros (Contado, Tarjeta, Transferencia)
+            document.getElementById('filtroTipoPagoMensual').querySelector('option[value="TODOS"]').textContent = t.paymentTypeTotal;
+            document.getElementById('filtroTipoPagoHistorico').querySelector('option[value="TODOS"]').textContent = t.paymentTypeTotal;
+            
+            // Actualizar encabezados de tabla (para porcentaje y sumatoria)
+            updateTableHeadersAndFooters();
+            
+            // Actualizar selector de meses con nombres completos del idioma actual
+            inicializarSelectoresMesAnio();
+        }
+
+        function updateTableHeadersAndFooters() {
+            // ... (Esta función permanece idéntica) ...
+            const t = TRADUCTIONS[config.idioma];
+
+            // Tabla 1: Ultimos Gastos
+            document.getElementById('tablaUltimosGastos').querySelector('thead').innerHTML = `
+                <tr><th>${t.date}</th><th>${t.cat}</th><th>${t.desc}</th><th>${t.value}</th></tr>
+            `;
+            document.getElementById('tablaUltimosGastos').querySelector('tfoot td:first-child').textContent = t.totalSum;
+            
+            // Tabla 2: Resumen Mensual (Porcentaje al final)
+             document.getElementById('tablaResumenMensual').querySelector('thead').innerHTML = `
+                <tr><th>${t.category}</th><th>${t.total}</th><th class="gasto-percent">${t.percent}</th></tr>
+            `;
+            document.getElementById('tablaResumenMensual').querySelector('tfoot td:first-child').textContent = t.totalSum;
+            
+             // Tabla 2 Detalle:
+            document.getElementById('tablaDetalleMensual').querySelector('thead').innerHTML = `
+                <tr><th>${t.date}</th><th>${t.desc}</th><th>${t.value}</th></tr>
+            `;
+            document.getElementById('tablaDetalleMensual').querySelector('tfoot td:first-child').textContent = t.totalSum;
+
+            // Tabla 3: Resumen Histórico (Porcentaje al final)
+             document.getElementById('tablaResumenHistorico').querySelector('thead').innerHTML = `
+                <tr><th>${t.category}</th><th>${t.total}</th><th class="gasto-percent">${t.percent}</th></tr>
+            `;
+             document.getElementById('tablaResumenHistorico').querySelector('tfoot td:first-child').textContent = t.totalSum;
+
+            // Tabla 3 Detalle:
+            document.getElementById('tablaDetalleHistorico').querySelector('thead').innerHTML = `
+                <tr><th>${t.date}</th><th>${t.desc}</th><th>${t.value}</th></tr>
+            `;
+            document.getElementById('tablaDetalleHistorico').querySelector('tfoot td:first-child').textContent = t.totalSum;
+
+            // Tabla 4: Categorías
+            document.getElementById('tablaCategorias').querySelector('thead').innerHTML = `
+                <tr><th>${t.category}</th><th>${t.action}</th></tr>
+            `;
+        }
+
+        // =================================================================================
+        // FUNCIONES DE INICIALIZACIÓN
+        // =================================================================================
+        document.addEventListener('DOMContentLoaded', inicializarApp);
+
+        function inicializarApp() {
+            // --- CAMBIO 2: Registrar el plugin de datalabels ---
+            Chart.register(ChartDataLabels);
+
+            gastos = JSON.parse(localStorage.getItem('gastos')) || [];
+            config = JSON.parse(localStorage.getItem('config')) || {};
+            descripcionesUsadas = JSON.parse(localStorage.getItem('descripcionesUsadas')) || [];
+            
+            // Corregir valores de TipoPago de "Crédito" a "Tarjeta" si existen
+            gastos = gastos.map(g => ({ ...g, tipoPago: g.tipoPago === 'Crédito' ? 'Tarjeta' : g.tipoPago }));
+
+            config.monedaSimbolo = config.monedaSimbolo || '$';
+            config.categorias = config.categorias || ['Alimentación', 'Transporte', 'Vivienda', 'Ocio', 'Servicios', 'Otros'];
+            config.idioma = config.idioma || 'es';
+            config.lastCategory = config.lastCategory || config.categorias[0];
+
+            // Aplicar configuración inicial
+            setLanguage(config.idioma);
+            cargarConfig();
+
+            // Inicializar UI
+            inicializarFecha();
+            cargarSugerenciasDescripciones();
+            actualizarTablaUltimosGastos(); // <-- Esta función ahora mostrará los gastos del mes
+            
+            // Listener para el input file de CSV
+            document.getElementById('inputImportarCSV').addEventListener('change', importarGastosCSV);
+            
+             // Cerrar el modal al hacer clic fuera de él
+            window.onclick = function(event) {
+                const modal = document.getElementById('modalEdicion');
+                if (event.target === modal) {
+                    cerrarModal();
+                }
+            };
+            
+            // --- CAMBIO 3: Llamar a la función de recordatorio ---
+            verificarRecordatorioBackup();
+            
+            // --- CAMBIO 4: No se necesita código aquí. El HTML ya define la Pantalla 1 como activa por defecto ---
+        }
+        
+        // --- CAMBIO 3: Nueva función para el recordatorio de backup ---
+        function verificarRecordatorioBackup() {
+            const hoy = new Date();
+            const dia = hoy.getDate();
+            
+            // Comprueba si es día 1 o 15
+            if (dia === 1 || dia === 15) {
+                const hoyStr = hoy.toISOString().split('T')[0]; // Formato "YYYY-MM-DD"
+                const ultimoRecordatorioVisto = localStorage.getItem('ultimoRecordatorioVisto');
+                
+                // Si no se ha mostrado el recordatorio hoy
+                if (ultimoRecordatorioVisto !== hoyStr) {
+                    // Usar setTimeout para no bloquear la carga inicial de la UI
+                    setTimeout(() => {
+                        alert(TRADUCTIONS[config.idioma].alertBackup);
+                        // Guardar que ya se mostró hoy
+                        localStorage.setItem('ultimoRecordatorioVisto', hoyStr);
+                    }, 1500); // 1.5 segundos de espera
+                }
+            }
+        }
+
+        // ... (inicializarFecha, inicializarSelectoresMesAnio, guardarConfig, cargarConfig, etc. permanecen idénticas) ...
+        function inicializarFecha() {
+            // ... (idéntico) ...
+        }
+        
+        function inicializarSelectoresMesAnio() {
+            // ... (idéntico) ...
+        }
+        function guardarConfig() {
+            // ... (idéntico) ...
+        }
+        function cargarConfig() {
+            // ... (idéntico) ...
+        }
+        function cargarCategoriasEnSelect() {
+            // ... (idéntico) ...
+        }
+        function cargarTablaCategorias() {
+            // ... (idéntico) ...
+        }
+        function agregarCategoria() {
+            // ... (idéntico) ...
+        }
+        function eliminarCategoria(catNombre) {
+            // ... (idéntico) ...
+        }
+
+        // =================================================================================
+        // MANEJO DE GASTOS
+        // =================================================================================
+        function agregarGasto() {
+            // ... (idéntico) ...
+        }
+        function guardarDatos() {
+            // ... (idéntico) ...
+        }
+
+        // =================================================================================
+        // ACTUALIZACIÓN DE VISTAS (TABLAS Y GRÁFICOS)
+        // =================================================================================
+
+        // --- CAMBIO 1: Lógica de la tabla de Ingreso actualizada ---
+        function actualizarTablaUltimosGastos() {
+            const tbody = document.getElementById('tablaUltimosGastos').querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            // Filtrar gastos del mes actual
+            const hoy = new Date();
+            const mesActual = hoy.getMonth() + 1;
+            const anioActual = hoy.getFullYear();
+
+            const gastosMesActual = gastos.filter(g => {
+                const fechaGasto = new Date(g.fecha + 'T00:00:00'); // Asegurar zona horaria local
+                return fechaGasto.getMonth() + 1 === mesActual && fechaGasto.getFullYear() === anioActual;
+            });
+            // Los gastos ya vienen ordenados por fecha descendente desde guardarDatos()
+
+            let total = 0;
+
+            if (gastosMesActual.length === 0) {
+                 // Texto actualizado para reflejar que es el mes, no "últimos gastos"
+                 tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">No hay gastos registrados este mes.</td></tr>`;
+                 document.getElementById('totalUltimosGastos').textContent = formatearMoneda(0);
+                 return;
+            }
+
+            gastosMesActual.forEach(gasto => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => abrirModalEdicion(gasto.id);
+                
+                tr.innerHTML = `
+                    <td>${formatearFechaCorta(gasto.fecha)}</td>
+                    <td class="gasto-categoria-abbr">${abreviarCategoria(gasto.categoria)}</td>
+                    <td>${gasto.descripcion}</td>
+                    <td class="gasto-valor">${formatearMoneda(gasto.valor)}</td>
+                `;
+                tbody.appendChild(tr);
+                total += gasto.valor;
+            });
+            document.getElementById('totalUltimosGastos').textContent = formatearMoneda(total);
+        }
+
+        function actualizarResumenMensual() {
+            // ... (idéntico) ...
+        }
+        
+        function mostrarDetalleMensual(gastosFiltradosMes, categoria) {
+            // ... (idéntico) ...
+        }
+
+        function actualizarResumenHistorico() {
+            // ... (idéntico) ...
+        }
+        
+         function mostrarDetalleHistorico(gastosFiltradosAnio, categoria) {
+            // ... (idéntico) ...
+        }
+
+        // =================================================================================
+        // FUNCIONES DE GRÁFICOS
+        // =================================================================================
+        
+        function dibujarGrafico(chartInstance, canvasId, labels, data, callback) {
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            if (data.length === 0) {
+                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                 ctx.textAlign = 'center';
+                 ctx.fillText('No hay datos para mostrar', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                 callback(null);
+                 return;
+            }
+            
+            const newChartInstance = new Chart(ctx, {
+                type: 'pie', // Gráfico de pastel (pie)
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gastos',
+                        data: data,
+                        backgroundColor: [
+                            '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', 
+                            '#6f42c1', '#fd7e14', '#20c997', '#6c757d', '#f8f9fa'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                boxWidth: 12
+                            }
+                        },
+                        // --- INICIO DE CAMBIO 2: Configuración del plugin de etiquetas ---
+                        datalabels: {
+                            formatter: (value, ctx) => {
+                                // Calcula el total
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => {
+                                    sum += data;
+                                });
+                                // Calcula el porcentaje
+                                let percentage = (value * 100 / sum).toFixed(1) + '%';
+                                return percentage;
+                            },
+                            color: '#fff', // Color del texto
+                            font: {
+                                weight: 'bold',
+                                size: 10
+                            },
+                            // Añadir un pequeño borde oscuro al texto para legibilidad
+                            textStrokeColor: '#333',
+                            textStrokeWidth: 2
+                        }
+                        // --- FIN DE CAMBIO 2 ---
+                    }
+                }
+            });
+            callback(newChartInstance);
+        }
+
+        // =================================================================================
+        // NAVEGACIÓN Y UTILIDADES
+        // =================================================================================
+        
+        function mostrarPantalla(idPantalla, btnActivo) {
+            // --- CAMBIO 4 y 5: Scroll al inicio de la página ---
+            window.scrollTo(0, 0);
+
+            document.querySelectorAll('.pantalla').forEach(p => p.classList.remove('activa'));
+            document.getElementById(idPantalla).classList.add('activa');
+            
+            document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+            btnActivo.classList.add('active');
+
+            // Cargar datos al cambiar a pantallas de resumen
+            if (idPantalla === 'mensual') {
+                inicializarSelectoresMesAnio(); // Asegura meses en idioma correcto
+                actualizarResumenMensual();
+            }
+            if (idPantalla === 'historico') {
+                inicializarSelectoresMesAnio();
+                actualizarResumenHistorico();
+            }
+            if (idPantalla === 'ingreso') {
+                actualizarTablaUltimosGastos();
+            }
+             if (idPantalla === 'configuracion') {
+                cargarTablaCategorias();
+            }
+        }
+        
+        function cargarSugerenciasDescripciones() {
+            // ... (idéntico) ...
+        }
+
+        function formatearMoneda(valor) {
+            // ... (idéntico) ...
+        }
+
+        function formatearFechaCorta(fechaStr) {
+            // ... (idéntico) ...
+        }
+        
+        function abreviarCategoria(categoria) {
+            // ... (idéntico) ...
+        }
+        
+        // =================================================================================
+        // EDICIÓN Y ELIMINACIÓN (MODAL)
+        // =================================================================================
+        
+        function abrirModalEdicion(id) {
+            // ... (idéntico) ...
+        }
+        
+        function cerrarModal() {
+            // ... (idéntico) ...
+        }
+
+        function guardarEdicionDesdeModal() {
+            // ... (idéntico) ...
+        }
+
+        function eliminarGastoDesdeModal() {
+            // ... (idéntico) ...
+        }
+        
+        function actualizarVistasPostEdicion() {
+            // ... (idéntico) ...
+        }
+
+
+        // =================================================================================
+        // FUNCIONES DE EXPORTACIÓN / IMPORTACIÓN / ELIMINACIÓN TOTAL
+        // =================================================================================
+
+        function exportarGastosCSV(tipo) {
+            // ... (idéntico) ...
+        }
+        
+        function importarGastosCSV(event) {
+            // ... (idéntico) ...
+        }
+
+        function limpiarTodosLosDatos() {
+            // ... (idéntico) ...
+        }
+    </script>
+    
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(registration => {
+              console.log('Service Worker registrado con éxito!');
+            })
+            .catch(err => {
+              console.error('Error al registrar el Service Worker:', err);
+            });
+        });
+      }
+    </script>
+</body>
+</html>
